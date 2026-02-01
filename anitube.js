@@ -1,73 +1,56 @@
 (function () {
     'use strict';
 
-    function AnitubePlugin() {
-        var _this = this;
+    // 1. Моментальне повідомлення при завантаженні файлу
+    // Якщо ви не бачите цього повідомлення - значить завантажилась стара версія файлу (КЕШ!)
+    if(typeof Lampa !== 'undefined') {
+        Lampa.Noty.show('Anitube: Скрипт завантажено! (v4)');
+    }
 
-        this.init = function () {
-            // Повідомлення при запуску Lampa
-            Lampa.Noty.show('Anitube v3: Плагін стартував');
+    // 2. Функція додавання кнопки
+    function addAnitubeButton(object) {
+        // Шукаємо будь-яку панель кнопок
+        var buttons = $('.full-start__buttons, .full-buttons, .buttons').first();
 
-            Lampa.Listener.follow('full', function (e) {
-                if (e.type == 'complite') {
-                    // Повідомлення, що ми зайшли в картку фільму
-                    Lampa.Noty.show('Anitube: Картка відкрита. Чекаємо 2 сек...');
+        if (buttons.length) {
+            // Перевіряємо, чи ми вже не додали кнопку, щоб не дублювати
+            if (buttons.find('.view--anitube').length) return;
 
-                    // ЧЕКАЄМО 2 СЕКУНДИ, поки інтерфейс точно завантажиться
-                    setTimeout(function () {
-                        
-                        // Шукаємо місце для кнопки (різні варіанти класів)
-                        var container = $('.full-start__buttons');
-                        if (!container.length) container = $('.buttons'); 
-                        if (!container.length) container = $('.full-buttons');
+            var btn = $(
+                '<div class="full-start__button selector view--anitube">' +
+                '<svg style="width: 20px; height: 20px; margin-right: 7px;" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+                '<circle cx="12" cy="12" r="10" stroke="#fff" stroke-width="2"/>' +
+                '<path d="M10 8L16 12L10 16V8Z" fill="#fff"/>' +
+                '</svg>' +
+                '<span>Anitube</span>' +
+                '</div>'
+            );
 
-                        if (container.length) {
-                            // Якщо знайшли контейнер
-                            Lampa.Noty.show('Anitube: Контейнер знайдено! Додаю кнопку.');
-                            
-                            var btn = $(
-                                '<div class="full-start__button selector view--anitube">' +
-                                '<svg style="width: 20px; height: 20px; margin-right: 7px;" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-                                '<path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM10 16.5V7.5L16 12L10 16.5Z" fill="#fff"/>' +
-                                '</svg>' +
-                                '<span>Anitube</span>' +
-                                '</div>'
-                            );
-
-                            btn.on('hover:enter click', function () {
-                                Lampa.Noty.show('Натиснуто Anitube: ' + (e.object.title || 'Без назви'));
-                                _this.searchAndPlay(e.object);
-                            });
-
-                            // Вставляємо кнопку першою
-                            container.prepend(btn);
-
-                        } else {
-                            // Якщо контейнер НЕ знайдено
-                            Lampa.Noty.show('Anitube помилка: Немає куди вставити кнопку (.full-start__buttons)');
-                            
-                            // Аварійний варіант: виводимо список класів, які є на сторінці (для діагностики)
-                            // Це покаже, які класи бачить скрипт
-                            var bodyClasses = $('body').attr('class');
-                            // Lampa.Noty.show('Body classes: ' + bodyClasses);
-                        }
-
-                    }, 2000); // 2000 мс = 2 секунди затримки
-                }
+            btn.on('hover:enter click', function () {
+                Lampa.Noty.show('Відкриваємо: ' + (object.title || 'Відео'));
+                // Тут потім буде логіка запуску
+                var searchUrl = 'https://anitube.in.ua/index.php?do=search&subaction=search&story=' + encodeURIComponent(object.title);
+                console.log('Open:', searchUrl);
+                Lampa.Platform.openURL(searchUrl); // Тимчасово відкриваємо в новому вікні
             });
-        };
 
-        this.searchAndPlay = function (movie) {
-             // Тут поки просто тест
-             var query = encodeURIComponent(movie.title);
-             var url = 'https://anitube.in.ua/index.php?do=search&subaction=search&story=' + query;
-             
-             Lampa.Platform.openURL(url); // Спробує відкрити сайт у браузері (для тесту)
-        };
+            buttons.prepend(btn);
+            Lampa.Noty.show('Anitube: Кнопка додана');
+        } else {
+            console.log('Anitube: Кнопки не знайдено');
+        }
     }
 
-    if (!window.plugin_anitube) {
-        window.plugin_anitube = new AnitubePlugin();
-        window.plugin_anitube.init();
-    }
+    // 3. Слухач подій
+    if (window.lampa_listener) window.lampa_listener.destroy(); // Видаляємо старий слухач, якщо був
+
+    window.lampa_listener = Lampa.Listener.follow('full', function (e) {
+        if (e.type == 'complite') {
+            // Невелика затримка, щоб інтерфейс промалювався
+            setTimeout(function() {
+                addAnitubeButton(e.object);
+            }, 1000);
+        }
+    });
+
 })();
