@@ -3,49 +3,71 @@
 
     function AnitubePlugin() {
         var _this = this;
+        var timer = null;
 
         this.init = function () {
-            Lampa.Noty.show('Anitube v6: Loaded');
+            Lampa.Noty.show('Anitube v7: Мисливець запущений');
 
             Lampa.Listener.follow('full', function (e) {
                 if (e.type == 'complite') {
-                    // Чекаємо трохи довше, щоб інтерфейс точно завантажився
-                    setTimeout(function () {
-                        // Отримуємо активне вікно
-                        var view = Lampa.Activity.active().render();
-                        
-                        // Шукаємо кнопку Play (клас view--play є стандартним для всіх скінів)
-                        var playBtn = view.find('.view--play');
+                    // Очищаємо попередній таймер, якщо був
+                    if(timer) clearInterval(timer);
 
-                        if (playBtn.length) {
-                            // Якщо знайшли Play, створюємо нашу кнопку
+                    var attempt = 0;
+                    
+                    // ЗАПУСКАЄМО ТАЙМЕР: Перевіряємо кожні 0.8 секунди
+                    timer = setInterval(function() {
+                        attempt++;
+                        if(attempt > 20) { // Здаємося через 16 секунд
+                            clearInterval(timer);
+                            return; 
+                        }
+
+                        // Шукаємо активне вікно
+                        var active = $('.activity.active'); 
+                        
+                        // 1. Спроба знайти панель кнопок (найкращий варіант)
+                        var buttons = active.find('.full-start__buttons');
+                        
+                        // 2. Якщо кнопок немає, шукаємо заголовок (h1)
+                        var title = active.find('h1');
+
+                        // Перевірка: чи ми вже додали кнопку?
+                        if (active.find('.view--anitube').length > 0) {
+                            clearInterval(timer); // Вже є, зупиняємось
+                            return;
+                        }
+
+                        if (buttons.length) {
+                            // ВАРІАНТ А: Знайшли панель кнопок
                             var btn = $(
-                                '<div class="full-start__button selector view--anitube" style="margin-left: 10px;">' +
-                                '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-                                '<circle cx="12" cy="12" r="10" stroke="#fff" stroke-width="2"/>' +
-                                '<text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">UA</text>' +
-                                '</svg>' +
+                                '<div class="full-start__button selector view--anitube">' +
+                                '<div style="background: #e50914; padding: 5px 10px; border-radius: 20px; color: white; font-weight: bold; font-size: 12px;">ANITUBE</div>' +
                                 '</div>'
                             );
-
-                            // Додаємо дію
-                            btn.on('click hover:enter', function () {
+                            
+                            btn.on('hover:enter click', function () {
                                 _this.searchAndPlay(e.object);
                             });
 
-                            // Вставляємо ПІСЛЯ кнопки Play
-                            playBtn.after(btn);
-                            Lampa.Noty.show('Anitube: Кнопку додано біля Play!');
-                        } else {
-                            // План Б: Якщо Play не знайдено, пробуємо причепитись до заголовка
-                            var title = view.find('.full-start__title');
-                            if (title.length) {
-                                title.append(' <span style="color:red; border:1px solid red; padding:5px;">[ANITUBE]</span>');
-                            }
-                            Lampa.Noty.show('Anitube: Кнопку Play не знайдено (' + playBtn.length + ')');
+                            buttons.prepend(btn);
+                            Lampa.Noty.show('Anitube: Знайшов кнопки!');
+                            clearInterval(timer); // Успіх, зупиняємось
+
+                        } else if (title.length) {
+                            // ВАРІАНТ Б: Знайшли заголовок
+                            var link = $('<span class="view--anitube selector" style="margin-left: 20px; font-size: 0.6em; background: #e50914; padding: 5px 10px; border-radius: 5px; cursor: pointer; color: white; vertical-align: middle;">▶ ANITUBE</span>');
+                            
+                            link.on('hover:enter click', function () {
+                                _this.searchAndPlay(e.object);
+                            });
+
+                            title.append(link);
+                            Lampa.Noty.show('Anitube: Причепився до заголовка!');
+                            clearInterval(timer); // Успіх
                         }
 
-                    }, 1500); // 1.5 секунди затримки
+                    }, 800); // Інтервал 800 мс
                 }
             });
         };
@@ -53,7 +75,6 @@
         this.searchAndPlay = function (movie) {
             var title = encodeURIComponent(movie.title);
             var url = 'https://anitube.in.ua/index.php?do=search&subaction=search&story=' + title;
-            Lampa.Noty.show('Відкриваємо Anitube...');
             Lampa.Platform.openURL(url);
         };
     }
